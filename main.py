@@ -6,16 +6,16 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# Pastikan MONGO_URI diambil dari Environment Variables Render
+# Ambil URI dari Environment Variables Render
 MONGO_URI = os.environ.get('MONGO_URI')
 
+# Setup MongoDB
 try:
     client = MongoClient(MONGO_URI)
-    # Kita paksa guna nama database 'InsightMe'
     db = client['InsightMe']
     collection = db['scores']
 except Exception as e:
-    print(f"MongoDB Connection Error: {e}")
+    print(f"DATABASE CONNECTION ERROR: {e}")
 
 @app.route('/')
 def home():
@@ -25,17 +25,20 @@ def home():
 def hantar_jawapan():
     try:
         data = request.json
+        print(f"Data diterima dari Wix: {data}")
+        
         if not data:
-            return jsonify({"error": "Tiada data"}), 400
+            return jsonify({"error": "Tiada data diterima"}), 400
         
-        # Simpan ke MongoDB
-        collection.insert_one(data)
+        # Proses simpan
+        result = collection.insert_one(data)
+        print(f"Berjaya simpan! ID: {result.inserted_id}")
         
-        return jsonify({"message": "Berjaya!"}), 200
+        return jsonify({"message": "SUCCESS"}), 200
+        
     except Exception as e:
-        # Ini yang akan muncul dekat Render Logs kalau Error 500 berlaku lagi
-        print(f"Error simpan data: {e}")
+        print(f"CRASH ERROR: {e}") # Error ini akan muncul di Render Logs
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
