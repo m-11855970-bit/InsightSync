@@ -4,15 +4,18 @@ from pymongo import MongoClient
 import os
 
 app = Flask(__name__)
-CORS(app) # Memberi kebenaran kepada Wix untuk hantar data
+CORS(app)
 
-# Ambil URL MongoDB dari Environment Variable Render
+# Pastikan MONGO_URI diambil dari Environment Variables Render
 MONGO_URI = os.environ.get('MONGO_URI')
 
-client = MongoClient(MONGO_URI)
-# Kita guna nama 'InsightMe' ikut gambar database anda
-db = client['InsightMe']    
-collection = db['scores']
+try:
+    client = MongoClient(MONGO_URI)
+    # Kita paksa guna nama database 'InsightMe'
+    db = client['InsightMe']
+    collection = db['scores']
+except Exception as e:
+    print(f"MongoDB Connection Error: {e}")
 
 @app.route('/')
 def home():
@@ -25,11 +28,13 @@ def hantar_jawapan():
         if not data:
             return jsonify({"error": "Tiada data"}), 400
         
-        # Simpan data 'nama', 'skor', 'date' ke MongoDB
+        # Simpan ke MongoDB
         collection.insert_one(data)
         
         return jsonify({"message": "Berjaya!"}), 200
     except Exception as e:
+        # Ini yang akan muncul dekat Render Logs kalau Error 500 berlaku lagi
+        print(f"Error simpan data: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
