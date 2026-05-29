@@ -6,26 +6,29 @@ from pymongo import MongoClient
 app = Flask(__name__)
 CORS(app)
 
-# Ambil URI dan terus buat sambungan
+# Pastikan MONGO_URI anda di Render adalah link panjang yang bermula dengan mongodb://
 uri = os.environ.get('MONGO_URI')
-client = MongoClient(uri)
-db = client['InsightMe'] # Nama database ditentukan di sini
-collection = db['scores']
 
-@app.route('/')
-def home():
-    return "Server Live!"
+# Sambungan secara manual untuk elak isu DNS srv
+try:
+    client = MongoClient(uri, connectTimeoutMS=30000, socketTimeoutMS=None, connect=False, maxPoolsize=1)
+    db = client['InsightMe']
+    collection = db['scores']
+    print("Sistem sambungan sedia (Lazy Loading)")
+except Exception as e:
+    print(f"Error sambungan awal: {e}")
 
 @app.route('/hantar-jawapan', methods=['POST'])
 def hantar_jawapan():
     try:
         data = request.json
         if data:
+            # Kita cuba masukkan data
             collection.insert_one(data)
             return jsonify({"status": "SUCCESS"}), 200
-        return jsonify({"status": "FAILED", "reason": "No data"}), 400
+        return jsonify({"status": "NO DATA"}), 400
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"CRASH SAAT INSERT: {e}")
         return jsonify({"status": "ERROR", "message": str(e)}), 500
 
 if __name__ == '__main__':
