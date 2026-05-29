@@ -2,11 +2,11 @@ import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
+import certifi # Tambah ini untuk sekuriti tambahan
 
 app = Flask(__name__)
 CORS(app)
 
-# Ambil MONGO_URI dari Render
 MONGO_URI = os.environ.get('MONGO_URI')
 
 @app.route('/')
@@ -17,20 +17,16 @@ def home():
 def hantar_jawapan():
     try:
         data = request.json
-        print(f"Data diterima: {data}")
-
-        # Gunakan setting 'retrywrites=false' jika DNS masih bermasalah
-        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        # Guna tlsCAFile untuk pastikan sambungan selamat & stabil
+        client = MongoClient(MONGO_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=5000)
         
-        db = client['InsightMe']
+        db = client.get_database() # Dia akan ambil nama DB dari URI automatik
         collection = db['scores']
         
         collection.insert_one(data)
-        client.close() # Tutup connection selepas guna
-        
         return jsonify({"status": "success"}), 200
     except Exception as e:
-        print(f"RALAT TERAKHIR: {str(e)}")
+        print(f"RALAT DATABASE: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
