@@ -8,7 +8,7 @@ CORS(app) # Supaya Wix dibenarkan hantar data ke sini
 
 # Sambung ke MongoDB guna link yang anda letak kat Render tadi
 client = pymongo.MongoClient(os.environ.get('MONGO_URL'))
-db = client.get_database('insight_db')
+db = client.get_database('InsightMe_db')
 collection = db.scores
 
 @app.route('/')
