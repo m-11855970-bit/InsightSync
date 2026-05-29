@@ -2,41 +2,41 @@ import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
+import traceback  # Penting untuk tengok punca ralat
 
 app = Flask(__name__)
 CORS(app)
 
-# Ambil URI dari Environment Variables Render
+# Ambil URI
 MONGO_URI = os.environ.get('MONGO_URI')
 
 @app.route('/')
 def home():
-    return "Server InsightMe sedia menerima data!"
+    return "Server InsightMe Aktif!"
 
 @app.route('/hantar-jawapan', methods=['POST'])
 def hantar_jawapan():
     try:
-        # 1. Terima data dari Wix
         data = request.json
         print(f"Data diterima: {data}")
         
-        if not data:
-            return jsonify({"status": "error", "message": "Tiada data diterima"}), 400
-        
-        # 2. Sambung ke MongoDB secara 'on-the-fly'
-        client = MongoClient(MONGO_URI, connectTimeoutMS=5000)
+        # Cuba sambung ke MongoDB
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         db = client['InsightMe']
         collection = db['scores']
         
-        # 3. Simpan data
+        # Cuba simpan data
         result = collection.insert_one(data)
-        print(f"Berjaya simpan dengan ID: {result.inserted_id}")
+        print(f"Berjaya! ID: {result.inserted_id}")
         
-        return jsonify({"status": "success", "id": str(result.inserted_id)}), 200
+        return jsonify({"status": "success"}), 200
 
     except Exception as e:
-        # Ini akan memaparkan error sebenar di Render Logs jika berlaku Error 500
-        print(f"RALAT PROSES: {str(e)}")
+        # Kod di bawah akan paksa Render Logs tunjuk ralat yang 'tersembunyi'
+        error_detail = traceback.format_exc()
+        print("--- RALAT DIKESAN ---")
+        print(error_detail)
+        print("---------------------")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
