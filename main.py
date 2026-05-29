@@ -1,44 +1,23 @@
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
-import os
+import sys # Tambah ni
 
 app = Flask(__name__)
 CORS(app)
 
-# Ambil URI dari Environment Variables Render
 MONGO_URI = os.environ.get('MONGO_URI')
 
-# Setup MongoDB
+# Guna block try-except di luar terus
 try:
-    client = MongoClient(MONGO_URI)
+    print("Cuba menyambung ke MongoDB...")
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    # Test connection terus
+    client.admin.command('ping')
     db = client['InsightMe']
     collection = db['scores']
+    print("Berjaya sambung ke MongoDB!")
 except Exception as e:
-    print(f"DATABASE CONNECTION ERROR: {e}")
-
-@app.route('/')
-def home():
-    return "Server InsightMe Live!"
-
-@app.route('/hantar-jawapan', methods=['POST'])
-def hantar_jawapan():
-    try:
-        data = request.json
-        print(f"Data diterima dari Wix: {data}")
-        
-        if not data:
-            return jsonify({"error": "Tiada data diterima"}), 400
-        
-        # Proses simpan
-        result = collection.insert_one(data)
-        print(f"Berjaya simpan! ID: {result.inserted_id}")
-        
-        return jsonify({"message": "SUCCESS"}), 200
-        
-    except Exception as e:
-        print(f"CRASH ERROR: {e}") # Error ini akan muncul di Render Logs
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
+    print(f"RALAT KRITIKAL MONGODB: {e}")
+    # Ini akan paksa Render Logs tunjuk apa yang tak kena
