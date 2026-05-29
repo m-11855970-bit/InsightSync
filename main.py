@@ -1,26 +1,36 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import pymongo
+from pymongo import MongoClient
 import os
 
 app = Flask(__name__)
-CORS(app) # Supaya Wix dibenarkan hantar data ke sini
+CORS(app) # Memberi kebenaran kepada Wix untuk hantar data
 
-# Sambung ke MongoDB guna link yang anda letak kat Render tadi
-client = pymongo.MongoClient(os.environ.get('MONGO_URL'))
-db = client.get_database('InsightMe_db')
-collection = db.scores
+# Ambil URL MongoDB dari Environment Variable Render
+MONGO_URI = os.environ.get('MONGO_URI')
+
+client = MongoClient(MONGO_URI)
+# Kita guna nama 'InsightMe' ikut gambar database anda
+db = client['InsightMe']    
+collection = db['scores']
 
 @app.route('/')
 def home():
-    return "Server InsightSync sedang berjalan!"
+    return "Server InsightMe Live!"
 
 @app.route('/hantar-jawapan', methods=['POST'])
 def hantar_jawapan():
-    data = request.json
-    # Simpan data yang diterima dari Wix ke MongoDB
-    collection.insert_one(data)
-    return jsonify({"status": "berjaya", "mesej": "Data disimpan ke MongoDB!"})
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "Tiada data"}), 400
+        
+        # Simpan data 'nama', 'skor', 'date' ke MongoDB
+        collection.insert_one(data)
+        
+        return jsonify({"message": "Berjaya!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=10000)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
