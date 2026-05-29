@@ -6,30 +6,38 @@ from pymongo import MongoClient
 app = Flask(__name__)
 CORS(app)
 
-# Pastikan MONGO_URI anda di Render adalah link panjang yang bermula dengan mongodb://
-uri = os.environ.get('MONGO_URI')
+# Ambil URI dari Environment Variables Render
+MONGO_URI = os.environ.get('MONGO_URI')
 
-# Sambungan secara manual untuk elak isu DNS srv
-try:
-    client = MongoClient(uri, connectTimeoutMS=30000, socketTimeoutMS=None, connect=False, maxPoolsize=1)
-    db = client['InsightMe']
-    collection = db['scores']
-    print("Sistem sambungan sedia (Lazy Loading)")
-except Exception as e:
-    print(f"Error sambungan awal: {e}")
+@app.route('/')
+def home():
+    return "Server InsightMe sedia menerima data!"
 
 @app.route('/hantar-jawapan', methods=['POST'])
 def hantar_jawapan():
     try:
+        # 1. Terima data dari Wix
         data = request.json
-        if data:
-            # Kita cuba masukkan data
-            collection.insert_one(data)
-            return jsonify({"status": "SUCCESS"}), 200
-        return jsonify({"status": "NO DATA"}), 400
+        print(f"Data diterima: {data}")
+        
+        if not data:
+            return jsonify({"status": "error", "message": "Tiada data diterima"}), 400
+        
+        # 2. Sambung ke MongoDB secara 'on-the-fly'
+        client = MongoClient(MONGO_URI, connectTimeoutMS=5000)
+        db = client['InsightMe']
+        collection = db['scores']
+        
+        # 3. Simpan data
+        result = collection.insert_one(data)
+        print(f"Berjaya simpan dengan ID: {result.inserted_id}")
+        
+        return jsonify({"status": "success", "id": str(result.inserted_id)}), 200
+
     except Exception as e:
-        print(f"CRASH SAAT INSERT: {e}")
-        return jsonify({"status": "ERROR", "message": str(e)}), 500
+        # Ini akan memaparkan error sebenar di Render Logs jika berlaku Error 500
+        print(f"RALAT PROSES: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
