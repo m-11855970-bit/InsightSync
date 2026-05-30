@@ -7,36 +7,28 @@ import certifi
 app = Flask(__name__)
 CORS(app)
 
-# Ambil URI panjang dari Render Environment
 MONGO_URI = os.environ.get('MONGO_URI')
 
 @app.route('/')
 def home():
-    return "Server InsightMe Aktif & Stabil!"
+    return "Server InsightMe Ready!"
 
 @app.route('/hantar-jawapan', methods=['POST'])
 def hantar_jawapan():
     client = None
     try:
         data = request.json
-        # Tambah directConnection=True untuk paksa sambungan terus ke shard
-        client = MongoClient(
-            MONGO_URI, 
-            tlsCAFile=certifi.where(), 
-            serverSelectionTimeoutMS=5000,
-            directConnection=False # Biarkan False untuk cluster, tetapi pastikan URI betul
-        )
+        # Guna certifi untuk SSL
+        client = MongoClient(MONGO_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=5000)
         
-        # Nyatakan nama database secara eksplisit
+        # Database yang anda baru cipta tadi
         db = client['InsightMe']
         collection = db['scores']
         
-        # Simpan data
         collection.insert_one(data)
         return jsonify({"status": "success"}), 200
-
     except Exception as e:
-        print(f"RALAT DATABASE: {str(e)}")
+        print(f"RALAT: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
     finally:
         if client:
