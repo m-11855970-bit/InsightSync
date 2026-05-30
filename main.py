@@ -7,7 +7,7 @@ import certifi
 app = Flask(__name__)
 CORS(app)
 
-# Ambil URI dari Render Environment
+# Ambil URI dari Render
 MONGO_URI = os.environ.get('MONGO_URI')
 
 @app.route('/')
@@ -19,20 +19,25 @@ def hantar_jawapan():
     client = None
     try:
         data = request.json
-        # Sambungan menggunakan certifi untuk kestabilan SSL di Render
-        client = MongoClient(MONGO_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=10000)
+        # Guna timeout 15 saat untuk beri ruang pada rangkaian Render
+        client = MongoClient(
+            MONGO_URI, 
+            tlsCAFile=certifi.where(),
+            serverSelectionTimeoutMS=15000,
+            tlsAllowInvalidCertificates=True # Tambahan untuk bypass isu SSL Render
+        )
         
-        # Uji sambungan dengan arahan ping
-        client.admin.command('ping')
-        
+        # Paksa pilih database 'InsightMe' secara manual
         db = client['InsightMe']
         collection = db['scores']
         
+        # Simpan data
         collection.insert_one(data)
         return jsonify({"status": "success"}), 200
+
     except Exception as e:
-        # Ini akan mencetak ralat SEBENAR ke log Render untuk kita kesan puncanya
-        print(f"DEBUG ERROR: {str(e)}")
+        # Ini akan keluar di log Render anda
+        print(f"DEBUG_UTAMA: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
     finally:
         if client:
