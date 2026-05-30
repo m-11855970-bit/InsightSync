@@ -7,41 +7,36 @@ import certifi
 app = Flask(__name__)
 CORS(app)
 
-# Ambil URI dari Render
-MONGO_URI = os.environ.get('MONGO_URI')
+# Ujian Manual: Buka link render anda /test-db dalam browser
+@app.route('/test-db')
+def test_db():
+    try:
+        uri = os.environ.get('MONGO_URI')
+        client = MongoClient(uri, tlsCAFile=certifi.where())
+        client.admin.command('ping')
+        return "SAMBUNGAN MONGODB BERJAYA! ✅"
+    except Exception as e:
+        return f"SAMBUNGAN GAGAL: {str(e)}"
 
 @app.route('/')
 def home():
-    return "Server InsightMe Aktif!"
+    return "Server Live!"
 
 @app.route('/hantar-jawapan', methods=['POST'])
 def hantar_jawapan():
-    client = None
     try:
-        data = request.json
-        # Guna timeout 15 saat untuk beri ruang pada rangkaian Render
-        client = MongoClient(
-            MONGO_URI, 
-            tlsCAFile=certifi.where(),
-            serverSelectionTimeoutMS=15000,
-            tlsAllowInvalidCertificates=True # Tambahan untuk bypass isu SSL Render
-        )
-        
-        # Paksa pilih database 'InsightMe' secara manual
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({"error": "Data kosong"}), 400
+            
+        uri = os.environ.get('MONGO_URI')
+        client = MongoClient(uri, tlsCAFile=certifi.where())
         db = client['InsightMe']
-        collection = db['scores']
-        
-        # Simpan data
-        collection.insert_one(data)
+        db['scores'].insert_one(data)
         return jsonify({"status": "success"}), 200
-
     except Exception as e:
-        # Ini akan keluar di log Render anda
-        print(f"DEBUG_UTAMA: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-    finally:
-        if client:
-            client.close()
+        print(f"RALAT: {str(e)}") # Ini sepatutnya keluar di log
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 10000)))
